@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrazyKart — Live Sales Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --card: #161620;
+    --border: #1e1e2e;
+    --accent: #ff4d00;
+    --accent2: #ff8c00;
+    --gold: #ffd700;
+    --green: #00e676;
+    --text: #f0f0f5;
+    --muted: #6b6b85;
+    --input-bg: #0e0e18;
+    --success: #00c853;
+    --error: #ff1744;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ANIMATED BACKGROUND */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(255,77,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,77,0,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  .bg-orb {
+    position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+    filter: blur(80px); opacity: 0.12;
+  }
+  .bg-orb-1 { width:600px; height:600px; background:#ff4d00; top:-200px; right:-100px; animation: drift1 20s ease-in-out infinite alternate; }
+  .bg-orb-2 { width:400px; height:400px; background:#8b00ff; bottom:-100px; left:-50px; animation: drift2 15s ease-in-out infinite alternate; }
+  @keyframes drift1 { to { transform: translate(-80px, 60px); } }
+  @keyframes drift2 { to { transform: translate(60px, -80px); } }
+
+  /* HEADER */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem; letter-spacing: 2px;
+    background: linear-gradient(135deg, #ff4d00, #ff8c00);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .logo span { color: #f0f0f5; -webkit-text-fill-color: #f0f0f5; }
+  .header-right { display: flex; align-items: center; gap: 1rem; }
+  .live-indicator {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.75rem; color: var(--green);
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(0,230,118,0.08);
+    padding: 0.3rem 0.8rem; border-radius: 100px;
+    border: 1px solid rgba(0,230,118,0.2);
+  }
+  .live-dot { width:7px; height:7px; background:var(--green); border-radius:50%; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.8); } }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex; gap: 0.25rem;
+    background: rgba(255,255,255,0.03); padding: 4px;
+    border-radius: 10px; border: 1px solid var(--border);
+  }
+  .nav-tab {
+    padding: 0.4rem 1rem; border-radius: 7px; cursor: pointer;
+    font-size: 0.8rem; font-weight: 500;
+    color: var(--muted); border: none; background: transparent;
+    transition: all 0.2s;
+  }
+  .nav-tab.active { background: var(--accent); color: white; }
+  .nav-tab:hover:not(.active) { color: var(--text); }
+
+  /* MAIN LAYOUT */
+  main {
+    position: relative; z-index: 1;
+    padding-top: 80px;
+    max-width: 1100px; margin: 0 auto; padding-left: 1.5rem; padding-right: 1.5rem;
+  }
+
+  /* PAGE SECTIONS */
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+  /* HERO */
+  .hero {
+    text-align: center; padding: 3rem 0 2rem;
+  }
+  .hero-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; letter-spacing: 4px; color: var(--accent);
+    text-transform: uppercase; margin-bottom: 1rem;
+  }
+  .hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    line-height: 1; letter-spacing: 3px;
+    background: linear-gradient(135deg, #f0f0f5 40%, #ff8c00);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 0.75rem;
+  }
+  .hero p { color: var(--muted); font-size: 1rem; max-width: 500px; margin: 0 auto 2rem; }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1rem; margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1.25rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 0.5rem; }
+  .stat-val {
+    font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .stat-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.2rem; }
+
+  /* FORM CARD */
+  .form-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+  .section-header {
+    padding: 1.2rem 1.75rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+  .section-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+  }
+  .section-title { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; color: var(--text); }
+  .form-body { padding: 1.75rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-grid.four { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .full { grid-column: 1 / -1; }
+
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .field label {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--muted); font-weight: 500;
+  }
+  .field label .req { color: var(--accent); }
+
+  input, select {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.7rem 0.9rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: all 0.2s;
+    width: 100%;
+    appearance: none; -webkit-appearance: none;
+  }
+  input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255,77,0,0.12);
+  }
+  input::placeholder { color: #3a3a55; }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b6b85' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; }
+  select option { background: #1a1a28; color: var(--text); }
+
+  /* BILL PREVIEW */
+  .bill-preview {
+    background: linear-gradient(135deg, rgba(255,77,0,0.05), rgba(255,140,0,0.05));
+    border: 1px solid rgba(255,77,0,0.2);
+    border-radius: 14px; padding: 1.25rem;
+    margin-top: 1.25rem;
+  }
+  .bill-row { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; }
+  .bill-row + .bill-row { border-top: 1px solid rgba(255,255,255,0.05); }
+  .bill-key { font-size: 0.8rem; color: var(--muted); }
+  .bill-val { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--text); }
+  .bill-total .bill-key { color: var(--accent); font-weight: 600; font-size: 0.9rem; }
+  .bill-total .bill-val { color: var(--gold); font-size: 1.2rem; font-weight: 600; }
+
+  /* SUBMIT BUTTON */
+  .btn-submit {
+    width: 100%; padding: 1rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 12px;
+    color: white; font-size: 1rem; font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer; margin-top: 1.5rem;
+    position: relative; overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,77,0,0.3); }
+  .btn-submit:active { transform: translateY(0); }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-submit .spinner {
+    display: none; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite;
+    margin: 0 auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 2rem; right: 2rem; z-index: 999;
+    padding: 1rem 1.5rem; border-radius: 14px;
+    font-size: 0.9rem; font-weight: 500;
+    transform: translateY(100px); opacity: 0;
+    transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    max-width: 360px;
+    display: flex; align-items: center; gap: 0.75rem;
+    backdrop-filter: blur(20px);
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { background: rgba(0,200,83,0.15); border: 1px solid rgba(0,200,83,0.3); color: #00e676; }
+  #toast.error { background: rgba(255,23,68,0.15); border: 1px solid rgba(255,23,68,0.3); color: #ff6b6b; }
+
+  /* DASHBOARD PAGE */
+  .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+  .dash-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 1.5rem; transition: border-color 0.2s;
+  }
+  .dash-card:hover { border-color: rgba(255,77,0,0.3); }
+  .dash-card h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 1rem; }
+  .bar-item { margin-bottom: 0.75rem; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.25rem; }
+  .bar-label .name { color: var(--text); }
+  .bar-label .amount { font-family: 'JetBrains Mono', monospace; color: var(--accent2); }
+  .bar-track { background: rgba(255,255,255,0.05); border-radius: 100px; height: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 1s ease; }
+
+  /* RECENT SALES TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; }
+  td { padding: 0.8rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); }
+  tr:hover td { background: rgba(255,77,0,0.03); }
+  .badge {
+    padding: 0.2rem 0.6rem; border-radius: 100px; font-size: 0.7rem;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .badge-core { background: rgba(0,230,118,0.1); color: var(--green); border: 1px solid rgba(0,230,118,0.2); }
+  .badge-noncore { background: rgba(255,77,0,0.1); color: var(--accent); border: 1px solid rgba(255,77,0,0.2); }
+
+  /* PBI SECTION */
+  .pbi-section { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 2.5rem; text-align: center; margin-bottom: 2rem; }
+  .pbi-section h2 { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 2px; margin-bottom: 0.5rem; }
+  .pbi-section p { color: var(--muted); font-size: 0.9rem; max-width: 600px; margin: 0 auto 2rem; }
+  .pbi-steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; text-align: left; margin-bottom: 2rem; }
+  .pbi-step { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; }
+  .pbi-step-num { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; color: var(--accent); line-height: 1; }
+  .pbi-step h4 { font-size: 0.85rem; font-weight: 600; margin: 0.5rem 0 0.3rem; }
+  .pbi-step p { font-size: 0.78rem; color: var(--muted); margin: 0; }
+  .code-block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.25rem; text-align: left; margin: 1.5rem 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+    color: #a8d8a8; overflow-x: auto; line-height: 1.7;
+  }
+  .code-block .comment { color: var(--muted); }
+  .code-block .keyword { color: var(--accent2); }
+  .btn-outline {
+    padding: 0.75rem 1.5rem; border-radius: 10px;
+    background: transparent; border: 1px solid var(--accent);
+    color: var(--accent); font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-outline:hover { background: var(--accent); color: white; }
+
+  /* MOBILE */
+  @media (max-width: 700px) {
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .form-grid, .form-grid.three, .form-grid.four { grid-template-columns: 1fr; }
+    .dash-grid, .pbi-steps { grid-template-columns: 1fr; }
+    .nav-tabs { display: none; }
+    header { padding: 0 1rem; }
+    main { padding-left: 1rem; padding-right: 1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+
+<header>
+  <div class="logo">Crazy<span>Kart</span></div>
+  <div class="header-right">
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchPage('entry')">📝 Record Sale</button>
+      <button class="nav-tab" onclick="switchPage('dashboard')">📊 Dashboard</button>
+    </div>
+    <div class="live-indicator"><div class="live-dot"></div>LIVE</div>
+  </div>
+</header>
+
+<main>
+
+<!-- ═══════════ RECORD SALE PAGE ═══════════ -->
+<div class="page active" id="page-entry">
+  <div class="hero">
+    <div class="hero-eyebrow">● Sales Entry Portal</div>
+    <h1>RECORD A SALE</h1>
+    <p>Every entry syncs to Google Sheets instantly — auto bill, week, and stock number included.</p>
+  </div>
+
+  <div class="stats-row" id="liveStats">
+    <div class="stat-card"><div class="stat-label">Today's Bills</div><div class="stat-val" id="statBills">—</div><div class="stat-sub">submitted this session</div></div>
+    <div class="stat-card"><div class="stat-label">Session Revenue</div><div class="stat-val" id="statRev">—</div><div class="stat-sub">MRP value</div></div>
+    <div class="stat-card"><div class="stat-label">Last Entry</div><div class="stat-val" id="statLast">—</div><div class="stat-sub">time</div></div>
+    <div class="stat-card"><div class="stat-label">API Status</div><div class="stat-val" id="statStatus" style="font-size:1.2rem">⬤ OK</div><div class="stat-sub">google sheet connected</div></div>
+  </div>
+
+  <!-- STORE INFO -->
+  <div class="form-card">
+    <div class="section-header">
+      <div class="section-icon">🏪</div>
+      <div class="section-title">Store Information</div>
+    </div>
+    <div class="form-body">
+      <div class="form-grid">
+        <div class="field">
+          <label>Retailer Name <span class="req">*</span></label>
+          <select id="retailer_name" required>
+            <option value="">Select retailer...</option>
+            <option>US Pole Retailers</option>
+            <option>Fashion lab</option>
+            <option>Glamx</option>
+            <option>Royalcrazy</option>
+            <option>StyleGalaxy</option>
+            <option>TrendEmpire</option>
+            <option>TrendTemple</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Store Code <span class="req">*</span></label>
+          <input type="number" id="store_code" placeholder="e.g. 101" min="1" required>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCT DETAILS -->
+  <div class="form-card">
+    <div class="section-header">
+      <div class="section-icon">👕</div>
+      <div class="section-title">Product Details</div>
+    </div>
+    <div class="form-body">
+      <div class="form-grid">
+        <div class="field">
+          <label>Style Code <span class="req">*</span></label>
+          <input type="text" id="style_code" placeholder="e.g. 202" required>
+        </div>
+        <div class="field">
+          <label>Brand <span class="req">*</span></label>
+          <select id="brand" required>
+            <option value="">Select brand...</option>
+            <option>US POLE</option>
+            <option>Big brother</option>
+            <option>Blaze Couture</option>
+            <option>Cosmic Curve</option>
+            <option>NeonNova</option>
+            <option>Rebel Threads</option>
+            <option>Shadow Flame</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Category Group <span class="req">*</span></label>
+          <select id="category_group" required>
+            <option value="">Select category...</option>
+            <option>Apparel</option>
+            <option>Men</option>
+            <option>Women</option>
+            <option>Boy</option>
+            <option>Girl</option>
+            <option>Child</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Sub Category <span class="req">*</span></label>
+          <select id="sub_category" required>
+            <option value="">Select sub-category...</option>
+            <option>T-Shirt</option>
+            <option>Pant</option>
+            <option>Formal</option>
+            <option>Dress</option>
+            <option>Casual Dress</option>
+            <option>Evening Gown</option>
+            <option>LED Party Dress</option>
+            <option>Cyber Bodycon</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCT ATTRIBUTES -->
+  <div class="form-card">
+    <div class="section-header">
+      <div class="section-icon">🎨</div>
+      <div class="section-title">Product Attributes</div>
+    </div>
+    <div class="form-body">
+      <div class="form-grid four">
+        <div class="field">
+          <label>Size</label>
+          <select id="size">
+            <option value="">Select...</option>
+            <option>S</option><option>M</option><option>L</option>
+            <option>XL</option><option>XLL</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Colour</label>
+          <select id="colour">
+            <option value="">Select...</option>
+            <option>Blue</option>
+            <option>Cyber Lime</option>
+            <option>Electric Cobalt</option>
+            <option>Ghost White</option>
+            <option>Midnight Obsidian</option>
+            <option>Rose Quartz</option>
+            <option>Sunset Crimson</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Season</label>
+          <select id="season">
+            <option value="">Select...</option>
+            <option>SS-26</option>
+            <option>Neon Summer</option>
+            <option>Quantum Spring</option>
+            <option>Ice Winter</option>
+            <option>Static Autumn</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Sleeves</label>
+          <select id="slevees">
+            <option value="">Select...</option>
+            <option>Half</option><option>Full</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Core / Non-Core</label>
+          <select id="core">
+            <option value="">Select...</option>
+            <option>CORE</option><option>NON CORE</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Fit</label>
+          <select id="fit">
+            <option value="">Select...</option>
+            <option>Regular</option><option>Slim</option><option>Loose</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BILLING -->
+  <div class="form-card">
+    <div class="section-header">
+      <div class="section-icon">💰</div>
+      <div class="section-title">Billing Details</div>
+    </div>
+    <div class="form-body">
+      <div class="form-grid three">
+        <div class="field">
+          <label>MRP (₹) <span class="req">*</span></label>
+          <input type="number" id="mrp" placeholder="e.g. 1500" min="1" max="100000" required oninput="updateBill()">
+        </div>
+        <div class="field">
+          <label>Quantity <span class="req">*</span></label>
+          <input type="number" id="qty" placeholder="e.g. 1" min="1" max="999" value="1" required oninput="updateBill()">
+        </div>
+        <div class="field">
+          <label>Discount (₹)</label>
+          <input type="number" id="discount" placeholder="0" min="0" value="0" oninput="updateBill()">
+        </div>
+      </div>
+
+      <div class="bill-preview" id="billPreview" style="display:none">
+        <div class="bill-row"><span class="bill-key">MRP per unit</span><span class="bill-val" id="bMrp">—</span></div>
+        <div class="bill-row"><span class="bill-key">Quantity</span><span class="bill-val" id="bQty">—</span></div>
+        <div class="bill-row"><span class="bill-key">MRP Value</span><span class="bill-val" id="bMrpVal">—</span></div>
+        <div class="bill-row"><span class="bill-key">Discount</span><span class="bill-val" id="bDiscount">—</span></div>
+        <div class="bill-row bill-total"><span class="bill-key">Bill Value</span><span class="bill-val" id="bBillVal">—</span></div>
+      </div>
+
+      <button class="btn-submit" onclick="submitSale()" id="submitBtn">
+        <span id="btnText">⚡ Submit Sale to Google Sheets</span>
+        <div class="spinner" id="btnSpinner"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ DASHBOARD PAGE ═══════════ -->
+<div class="page" id="page-dashboard">
+  <div class="hero">
+    <div class="hero-eyebrow">● Live Analytics</div>
+    <h1>SALES DASHBOARD</h1>
+    <p>Auto-updated from your Google Sheet. Powered by live data.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-val" id="d_totalRev">—</div><div class="stat-sub">all time bill value</div></div>
+    <div class="stat-card"><div class="stat-label">Total Bills</div><div class="stat-val" id="d_totalBills">—</div><div class="stat-sub">transactions</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Bill</div><div class="stat-val" id="d_avgBill">—</div><div class="stat-sub">per transaction</div></div>
+    <div class="stat-card"><div class="stat-label">Active Stores</div><div class="stat-val" id="d_stores">—</div><div class="stat-sub">retailers</div></div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-card">
+      <h3>📦 Revenue by Brand</h3>
+      <div id="chartBrands"></div>
+    </div>
+    <div class="dash-card">
+      <h3>🏪 Revenue by Retailer</h3>
+      <div id="chartRetailers"></div>
+    </div>
+    <div class="dash-card">
+      <h3>👗 Top Sub-Categories</h3>
+      <div id="chartCategories"></div>
+    </div>
+    <div class="dash-card">
+      <h3>🎨 Colour Distribution</h3>
+      <div id="chartColours"></div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="section-header">
+      <div class="section-icon">📋</div>
+      <div class="section-title">Recent Sales (Session)</div>
+    </div>
+    <div class="form-body" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th><th>Retailer</th><th>Store</th><th>Brand</th>
+              <th>Style</th><th>Size</th><th>MRP</th><th>Qty</th><th>Bill Val</th><th>Core</th>
+            </tr>
+          </thead>
+          <tbody id="salesTable"><tr><td colspan="10" style="text-align:center;color:var(--muted);padding:2rem">No sales recorded yet this session.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════
+// CONFIG — paste your Apps Script Web App URL here
+// ═══════════════════════════════
+const API_URL = "https://script.google.com/macros/s/AKfycbwApuK3WRP57m-oMrtaokiSaQphRBFTXVQdkXEr76o14QtHn2BYyjfajrP1M3ASJy9K/exec";
+
+// Session state
+let sessionSales = [];
+let sessionBills = 0;
+let sessionRevenue = 0;
+
+// ─── Page Switching ───
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+}
+
+// ─── Bill Preview ───
+function updateBill() {
+  const mrp = parseFloat(document.getElementById('mrp').value) || 0;
+  const qty = parseInt(document.getElementById('qty').value) || 0;
+  const disc = parseFloat(document.getElementById('discount').value) || 0;
+  if (!mrp || !qty) { document.getElementById('billPreview').style.display = 'none'; return; }
+  const mrpVal = mrp * qty;
+  const billVal = Math.max(0, mrpVal - disc);
+  document.getElementById('billPreview').style.display = 'block';
+  document.getElementById('bMrp').textContent = '₹' + fmt(mrp);
+  document.getElementById('bQty').textContent = qty;
+  document.getElementById('bMrpVal').textContent = '₹' + fmt(mrpVal);
+  document.getElementById('bDiscount').textContent = disc ? '-₹' + fmt(disc) : '—';
+  document.getElementById('bBillVal').textContent = '₹' + fmt(billVal);
+}
+
+function fmt(n) { return Number(n).toLocaleString('en-IN'); }
+
+// ─── Submit Sale ───
+async function submitSale() {
+  const fields = {
+    retailer_name: document.getElementById('retailer_name').value.trim(),
+    store_code:    document.getElementById('store_code').value.trim(),
+    style_code:    document.getElementById('style_code').value.trim(),
+    brand:         document.getElementById('brand').value.trim(),
+    category_group:document.getElementById('category_group').value.trim(),
+    sub_category:  document.getElementById('sub_category').value.trim(),
+    size:          document.getElementById('size').value,
+    colour:        document.getElementById('colour').value,
+    season:        document.getElementById('season').value,
+    slevees:       document.getElementById('slevees').value,
+    core:          document.getElementById('core').value,
+    fit:           document.getElementById('fit').value,
+    mrp:           document.getElementById('mrp').value,
+    qty:           document.getElementById('qty').value,
+    discount:      document.getElementById('discount').value || 0,
+  };
+
+  // Validation
+  if (!fields.retailer_name) return showToast('❌ Please select a retailer', 'error');
+  if (!fields.store_code) return showToast('❌ Store Code is required', 'error');
+  if (!fields.brand) return showToast('❌ Please select a brand', 'error');
+  if (!fields.style_code) return showToast('❌ Style Code is required', 'error');
+  if (!fields.mrp || fields.mrp < 1) return showToast('❌ MRP must be at least ₹1', 'error');
+  if (!fields.qty || fields.qty < 1) return showToast('❌ Quantity must be at least 1', 'error');
+
+  // UI loading
+  const btn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('btnText');
+  const spinner = document.getElementById('btnSpinner');
+  btn.disabled = true;
+  btnText.style.display = 'none';
+  spinner.style.display = 'block';
+
+  try {
+    const params = new URLSearchParams(fields);
+    const url = `${API_URL}?${params.toString()}`;
+    const response = await fetch(url, { method: 'GET', mode: 'no-cors' });
+
+    // no-cors means we can't read response, but if no error = success
+    const mrp = parseFloat(fields.mrp);
+    const qty = parseInt(fields.qty);
+    const disc = parseFloat(fields.discount) || 0;
+    const billVal = Math.max(0, mrp * qty - disc);
+
+    // Track in session
+    const now = new Date();
+    sessionSales.unshift({
+      time: now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}),
+      retailer: fields.retailer_name, store: fields.store_code,
+      brand: fields.brand, style: fields.style_code,
+      size: fields.size, mrp, qty, billVal, core: fields.core
+    });
+    sessionBills++;
+    sessionRevenue += billVal;
+
+    // Update header stats
+    document.getElementById('statBills').textContent = sessionBills;
+    document.getElementById('statRev').textContent = '₹' + fmt(sessionRevenue);
+    document.getElementById('statLast').textContent = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+    document.getElementById('statStatus').textContent = '⬤ OK';
+    document.getElementById('statStatus').style.color = 'var(--green)';
+
+    showToast(`✅ Sale recorded! Bill Value: ₹${fmt(billVal)}`, 'success');
+    resetForm();
+
+  } catch (err) {
+    showToast('⚠️ Network error — check API URL in config', 'error');
+    document.getElementById('statStatus').textContent = '⬤ ERR';
+    document.getElementById('statStatus').style.color = 'var(--error)';
+  } finally {
+    btn.disabled = false;
+    btnText.style.display = 'block';
+    spinner.style.display = 'none';
+  }
+}
+
+function resetForm() {
+  ['retailer_name','store_code','style_code','brand','category_group','sub_category',
+   'size','colour','season','slevees','core','fit'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('mrp').value = '';
+  document.getElementById('qty').value = '1';
+  document.getElementById('discount').value = '0';
+  document.getElementById('billPreview').style.display = 'none';
+}
+
+// ─── Dashboard Rendering ───
+function renderDashboard() {
+  if (!sessionSales.length) {
+    document.getElementById('d_totalBills').textContent = '0';
+    document.getElementById('d_totalRev').textContent = '₹0';
+    document.getElementById('d_avgBill').textContent = '₹0';
+    document.getElementById('d_stores').textContent = '0';
+    return;
+  }
+
+  const totalRev = sessionSales.reduce((s,r) => s + r.billVal, 0);
+  const totalBills = sessionSales.length;
+  const avgBill = totalRev / totalBills;
+  const stores = new Set(sessionSales.map(r => r.store)).size;
+
+  document.getElementById('d_totalRev').textContent = '₹' + fmt(totalRev);
+  document.getElementById('d_totalBills').textContent = totalBills;
+  document.getElementById('d_avgBill').textContent = '₹' + fmt(Math.round(avgBill));
+  document.getElementById('d_stores').textContent = stores;
+
+  renderBarChart('chartBrands', groupBy(sessionSales, 'brand'));
+  renderBarChart('chartRetailers', groupBy(sessionSales, 'retailer'));
+  renderBarChart('chartCategories', groupBy(sessionSales, r => r.style));
+  renderBarChart('chartColours', groupBy(sessionSales, r => r.size || 'Unknown'));
+
+  // Update table
+  const tbody = document.getElementById('salesTable');
+  tbody.innerHTML = sessionSales.slice(0,20).map(r => `
+    <tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--muted)">${r.time}</td>
+      <td>${r.retailer}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${r.store}</td>
+      <td><span style="color:var(--accent2)">${r.brand}</span></td>
+      <td style="font-family:'JetBrains Mono',monospace">${r.style}</td>
+      <td>${r.size || '—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace">₹${fmt(r.mrp)}</td>
+      <td style="text-align:center">${r.qty}</td>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--gold)">₹${fmt(r.billVal)}</td>
+      <td><span class="badge ${r.core === 'CORE' ? 'badge-core' : 'badge-noncore'}">${r.core || '—'}</span></td>
+    </tr>
+  `).join('');
+}
+
+function groupBy(arr, key) {
+  const map = {};
+  arr.forEach(r => {
+    const k = typeof key === 'function' ? key(r) : r[key];
+    map[k] = (map[k] || 0) + r.billVal;
+  });
+  return Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0,6);
+}
+
+function renderBarChart(containerId, data) {
+  const container = document.getElementById(containerId);
+  if (!data.length) { container.innerHTML = '<p style="color:var(--muted);font-size:0.8rem">No data yet.</p>'; return; }
+  const max = data[0][1];
+  container.innerHTML = data.map(([name, val]) => `
+    <div class="bar-item">
+      <div class="bar-label"><span class="name">${name}</span><span class="amount">₹${fmt(Math.round(val))}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(val/max*100).toFixed(1)}%"></div></div>
+    </div>
+  `).join('');
+}
+
+// ─── Toast ───
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  setTimeout(() => { t.className = ''; }, 4000);
+}
+
+// ─── Copy PQ ───
+function copyPQ() {
+  const script = `let\n    Source = Csv.Document(\n        Web.Contents("https://docs.google.com/spreadsheets/d/e/2PACX-1vRRJIeGNty6R6SSXu0euGXQOZouqFIPzptd0RBMXPkpLMa3pLXLgliTBjwkIAGZIi62EFJC1NRx6SQ5/pub?output=csv"),\n        [Delimiter=",", Columns=23, Encoding=65001, QuoteStyle=QuoteStyle.None]\n    ),\n    PromotedHeaders = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),\n    TypedTable = Table.TransformColumnTypes(PromotedHeaders,{{"MRP", type number}, {"Qty", Int64.Type}, {"Bill_Val", type number}, {"DATE", type date}, {"WEEK", Int64.Type}, {"MRP_VALUE", type number}, {"Discount", type number}})\nin\n    TypedTable`;
+  navigator.clipboard.writeText(script).then(() => showToast('✅ Power Query script copied!', 'success'));
+}
+
+// ─── Init ───
+updateBill();
+</script>
+</body>
+</html>
