@@ -1,0 +1,302 @@
+// ════════════════════════════════════════════════════════════
+// CrazyKart — Power BI DAX Measures
+// FILE: PowerBI_DAX_Measures.txt
+//
+// WHERE TO USE:
+//   In Power BI Desktop:
+//   1. Go to the "Table view" (left sidebar icon)
+//   2. Click "New Measure" in the Home ribbon
+//   3. Paste each measure below, one at a time
+//   4. Press Enter to save
+//
+// TIP: Create a blank table called "_Measures" to keep all
+//      your DAX measures organized in one place.
+//      Home → Enter Data → name it "_Measures" → Load
+// ════════════════════════════════════════════════════════════
+
+
+// ══════════════════════════════
+// SECTION 1: CORE KPIs
+// ══════════════════════════════
+
+// Total Revenue
+Total Revenue =
+SUM(Sheet1[Bill_Val])
+
+// Total Units Sold
+Total Units =
+SUM(Sheet1[Qty])
+
+// Total Bills / Transactions
+Total Bills =
+COUNTROWS(Sheet1)
+
+// Average Bill Value
+Avg Bill Value =
+DIVIDE([Total Revenue], [Total Bills], 0)
+
+// Average MRP per unit
+Avg MRP =
+AVERAGE(Sheet1[MRP])
+
+
+// ══════════════════════════════
+// SECTION 2: TIME INTELLIGENCE
+// ══════════════════════════════
+
+// Today's Revenue (use with date slicer)
+Today Revenue =
+CALCULATE(
+    [Total Revenue],
+    FILTER(Sheet1, Sheet1[DATE] = TODAY())
+)
+
+// Yesterday's Revenue
+Yesterday Revenue =
+CALCULATE(
+    [Total Revenue],
+    FILTER(Sheet1, Sheet1[DATE] = TODAY() - 1)
+)
+
+// Day-on-Day Change (%)
+DoD Change % =
+VAR Today    = [Today Revenue]
+VAR Yesterday = [Yesterday Revenue]
+RETURN
+DIVIDE(Today - Yesterday, Yesterday, 0)
+
+// This Week Revenue
+This Week Revenue =
+CALCULATE(
+    [Total Revenue],
+    FILTER(Sheet1,
+        Sheet1[WEEK] = MAX(Sheet1[WEEK]) &&
+        Sheet1[FY]   = MAX(Sheet1[FY])
+    )
+)
+
+// Last Week Revenue
+Last Week Revenue =
+CALCULATE(
+    [Total Revenue],
+    FILTER(Sheet1,
+        Sheet1[WEEK] = MAX(Sheet1[WEEK]) - 1 &&
+        Sheet1[FY]   = MAX(Sheet1[FY])
+    )
+)
+
+// Week-on-Week Growth (%)
+WoW Growth % =
+DIVIDE(
+    [This Week Revenue] - [Last Week Revenue],
+    [Last Week Revenue],
+    0
+)
+
+// MTD Revenue (Month to Date)
+MTD Revenue =
+CALCULATE(
+    [Total Revenue],
+    DATESMTD(Sheet1[DATE])
+)
+
+// YTD Revenue (Year to Date)
+YTD Revenue =
+CALCULATE(
+    [Total Revenue],
+    DATESYTD(Sheet1[DATE], "3-31")  // Indian FY ends March 31
+)
+
+
+// ══════════════════════════════
+// SECTION 3: STORE RANKING (Feature 15)
+// ══════════════════════════════
+
+// Rank stores by total revenue (lower number = better)
+Store Revenue Rank =
+RANKX(
+    ALL(Sheet1[Store Code]),
+    [Total Revenue],
+    ,
+    DESC,
+    DENSE
+)
+
+// Rank stores by number of bills
+Store Bill Rank =
+RANKX(
+    ALL(Sheet1[Store Code]),
+    [Total Bills],
+    ,
+    DESC,
+    DENSE
+)
+
+// Performance Tier (Top / Mid / Bottom)
+Store Performance Tier =
+VAR StoreRev = [Total Revenue]
+VAR TopThreshold =
+    CALCULATE(
+        PERCENTILE.INC(VALUES(Sheet1[Store Code]), 0.67),
+        ALL(Sheet1[Store Code])
+    )
+VAR BotThreshold =
+    CALCULATE(
+        PERCENTILE.INC(VALUES(Sheet1[Store Code]), 0.33),
+        ALL(Sheet1[Store Code])
+    )
+RETURN
+IF(StoreRev >= TopThreshold, "🟢 Top Tier",
+   IF(StoreRev <= BotThreshold, "🔴 Needs Attention", "🟡 Mid Tier"))
+
+
+// ══════════════════════════════
+// SECTION 4: BRAND PERFORMANCE
+// ══════════════════════════════
+
+// Revenue share % per brand
+Brand Revenue Share % =
+DIVIDE(
+    [Total Revenue],
+    CALCULATE([Total Revenue], ALL(Sheet1[BRAND])),
+    0
+)
+
+// Rank brands by revenue
+Brand Rank =
+RANKX(
+    ALL(Sheet1[BRAND]),
+    [Total Revenue],
+    ,
+    DESC,
+    DENSE
+)
+
+
+// ══════════════════════════════
+// SECTION 5: INVENTORY (Feature 16)
+// ══════════════════════════════
+// NOTE: For these to work, create a separate table
+// called "StockMaster" with columns: Style_Code, Opening_Stock
+
+// Average daily units (last 7 days)
+Avg Daily Units 7D =
+VAR LastDate  = MAX(Sheet1[DATE])
+VAR StartDate = LastDate - 7
+RETURN
+DIVIDE(
+    CALCULATE(
+        SUM(Sheet1[Qty]),
+        FILTER(Sheet1, Sheet1[DATE] >= StartDate && Sheet1[DATE] <= LastDate)
+    ),
+    7,
+    0
+)
+
+// Days of Stock Remaining (join with StockMaster table)
+// Steps:
+//   1. Create a "StockMaster" table: Style_Code | Opening_Stock
+//   2. In Power BI Model view, link Sheet1[STYLE_Code] → StockMaster[Style_Code]
+//   3. Then use this measure:
+
+// Days Remaining =
+// VAR OpeningStock = MAX(StockMaster[Opening_Stock])
+// VAR TotalSold    = SUM(Sheet1[Qty])
+// VAR Remaining    = OpeningStock - TotalSold
+// RETURN DIVIDE(MAX(Remaining, 0), [Avg Daily Units 7D], 999)
+
+// Stock Status Label
+// Stock Status =
+// VAR Days = [Days Remaining]
+// RETURN
+// IF(Days < 7,  "🔴 Critical",
+//    IF(Days < 14, "🟡 Low",
+//       "🟢 OK"))
+
+
+// ══════════════════════════════
+// SECTION 6: COHORT ANALYSIS (Feature 18)
+// ══════════════════════════════
+
+// First sale month for each store (onboarding cohort)
+// Create a calculated column in Sheet1:
+// Cohort Month = FORMAT(CALCULATE(MIN(Sheet1[DATE]), ALLEXCEPT(Sheet1, Sheet1[Store Code])), "MMM YYYY")
+
+// Months since onboarding (calculated column)
+// Months Since Onboard =
+// DATEDIFF(
+//     CALCULATE(MIN(Sheet1[DATE]), ALLEXCEPT(Sheet1, Sheet1[Store Code])),
+//     Sheet1[DATE],
+//     MONTH
+// )
+
+
+// ══════════════════════════════
+// SECTION 7: DYNAMIC TITLES
+// (Use in Text Box visuals to show date context)
+// ══════════════════════════════
+
+Dashboard Title =
+"CrazyKart Sales Dashboard  |  " & FORMAT(TODAY(), "DD MMM YYYY")
+
+Selected Period =
+"Showing: " & FORMAT(MIN(Sheet1[DATE]), "DD MMM") & " – " & FORMAT(MAX(Sheet1[DATE]), "DD MMM YYYY")
+
+
+// ══════════════════════════════
+// SECTION 8: CONDITIONAL FORMATTING VALUES
+// (Use these in "Format by field value" for color rules)
+// ══════════════════════════════
+
+// Revenue Color (for KPI cards) — returns hex color string
+Revenue Color =
+IF([WoW Growth %] >= 0, "#10b981", "#ef4444")
+
+// DoD Color
+DoD Color =
+IF([DoD Change %] >= 0, "#10b981", "#ef4444")
+
+
+// ════════════════════════════════════════════════════════════
+// POWER BI VISUAL SETUP GUIDE
+// ════════════════════════════════════════════════════════════
+//
+// PAGE 1 — Summary Dashboard
+//   • 4x KPI Cards: Total Revenue | Total Units | Avg Bill | Total Bills
+//   • Line chart: DATE (x) vs Total Revenue (y) — add WoW Growth as tooltip
+//   • Donut chart: BRAND vs Total Revenue
+//   • Bar chart: RETAILER_NAME vs Total Revenue
+//   • Slicers: DATE range | BRAND | RETAILER_NAME
+//
+// PAGE 2 — Store Performance Ranking (Feature 15)
+//   • Matrix: Store Code (rows) | Revenue, Units, Bills, Rank (columns)
+//   • Apply background color rule on Revenue column:
+//     Format → Conditional formatting → Background color
+//     Rules: Value > 70th %ile → green | < 30th %ile → red
+//   • Add Store Performance Tier as a column
+//
+// PAGE 3 — Sales Forecast (Feature 07)
+//   • Import the "07_Sales_Forecast" sheet from analytics_output.xlsx
+//   • Line chart: Date (x) | Forecast_Revenue, Lower_Bound, Upper_Bound
+//   • Use a shaded area chart for confidence bands
+//
+// PAGE 4 — Anomaly Alerts (Feature 08)
+//   • Import "08_Anomalies" sheet
+//   • Table: Date | Store | Actual_Revenue | 7Day_Avg | Type | Deviation_%
+//   • Conditional format "Type" column: red for DROP, green for SPIKE
+//
+// PAGE 5 — Brand Scoring (Feature 09)
+//   • Import "09_Brand_Scoring" sheet
+//   • Bar chart: Brand (y) | Composite_Score (x) — sorted descending
+//   • Color bars by Tier column
+//
+// PAGE 6 — Inventory (Feature 16)
+//   • Import "16_Inventory_Forecast" sheet
+//   • Table with Days_Remaining and Stock_Status
+//   • Conditional format: red < 7 days, yellow 7-14 days, green > 14 days
+//
+// MOBILE LAYOUT (Feature 17)
+//   • View menu → Mobile Layout
+//   • Add only: Revenue KPI, Units KPI, Top Store, Revenue Chart
+//   • Keep it under 6 visuals for readability
+// ════════════════════════════════════════════════════════════
