@@ -95,11 +95,11 @@ This project also supports integration with a **SQL-based database system** for 
 ## 📂 Project Structure
 
 RetailIQ/
-│── index.html        # Main application file
-│── assets/           # Images, icons (optional)
-│── styles/           # CSS files (optional)
-│── scripts/          # JavaScript files (optional)
-│── README.md         # Documentation
+├── index.html        # Main application file
+├── assets/           # Images, icons (optional)
+├── styles/           # CSS files (optional)
+├── scripts/          # JavaScript files (optional)
+└── README.md         # Documentation
 
 ---
 
