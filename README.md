@@ -52,7 +52,27 @@ This project also supports integration with a **SQL-based database system** for 
 - Visual PIN entry system with animations
 
 ---
+## 📸 Screenshots
 
+### 📊 KPI Dashboard
+![KPI Dashboard](https://raw.githubusercontent.com/SunilKulali/CrazyKart-Retail-data/main/crazykart_project/Screenshots/Screenshot%20(204).png)
+
+### 🧾 Sales Entry
+![Sales Entry](https://raw.githubusercontent.com/SunilKulali/CrazyKart-Retail-data/main/crazykart_project/Screenshots/Screenshot%20(205).png)
+
+### 📊 Dashboard Visuals
+![Dashboard Visuals](https://raw.githubusercontent.com/SunilKulali/CrazyKart-Retail-data/main/crazykart_project/Screenshots/Screenshot%20(206).png)
+
+### ⚙️ PIN Change Settings
+![PIN Change](https://raw.githubusercontent.com/SunilKulali/CrazyKart-Retail-data/main/crazykart_project/Screenshots/Screenshot%20(207).png)
+
+### 🏪 Store Login
+![Store Login](https://raw.githubusercontent.com/SunilKulali/CrazyKart-Retail-data/main/crazykart_project/Screenshots/Screenshot%20(208).png)
+
+### 🔐 PIN Login
+![PIN Login](https://raw.githubusercontent.com/SunilKulali/CrazyKart-Retail-data/main/crazykart_project/Screenshots/Screenshot%20(209).png)
+
+----
 ### ⚙️ Settings & Data Management
 - Export data to CSV
 - Clear local storage
